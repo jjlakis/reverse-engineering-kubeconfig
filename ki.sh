@@ -4,6 +4,21 @@ function jwt_decode(){
 	    jq -R 'split(".") | .[1] | @base64d | fromjson' <<< "$1"
     }
 
+function print_certificate_summary(){
+		IDENTIFIER=$RANDOM
+
+		echo $1 | base64 -d > /tmp/certificate-$IDENTIFIER
+		ISSUER=$(openssl x509 -in /tmp/certificate-$IDENTIFIER -text -noout | grep Issuer | sed -e 's/^[ \t]*//' | sed 's/Issuer: //g')
+		SUBJECT=$(openssl x509 -in /tmp/certificate-$IDENTIFIER -text -noout | grep Subject: | sed -e 's/^[ \t]*//' | sed 's/Subject: //g')
+		EXP=$(openssl x509 -in /tmp/certificate-$IDENTIFIER -enddate -noout | sed 's/notAfter=//g')
+
+		rm -rf /tmp/certificate-$IDENTIFIER
+
+		echo "    -->      Issuer: $ISSUER"
+		echo "    -->     Subject: $SUBJECT"
+		echo "    -->     Expires: $EXP"
+
+	}
 
 KUBECONFIG_PATH=${1:-"$HOME/.kube/config"}
 
@@ -72,13 +87,7 @@ for CONTEXT in ${CONTEXTS[*]}; do
         if [ ! "$CLUSTER_CA" == "null" ]
         then
                 echo "Yes"
-                ISSUER=$(echo $CLUSTER_CA | base64 -d | openssl x509 -in - -text -noout | grep Issuer | sed -e 's/^[ \t]*//' | sed 's/Issuer: //g')
-                SUBJECT=$(echo $CLUSTER_CA | base64 -d | openssl x509 -in - -text -noout | grep Subject: | sed -e 's/^[ \t]*//' | sed 's/Subject: //g')
-                EXP=$(echo $CLUSTER_CA | base64 -d | openssl x509 -in - -enddate -noout | sed 's/notAfter=//g')
-
-                echo "    -->      Issuer: $ISSUER"
-                echo "    -->     Subject: $SUBJECT"
-                #echo "    -->     Expires: $EXP"
+                print_certificate_summary $CLUSTER_CA
 
         else
                 echo "No"
@@ -89,13 +98,8 @@ for CONTEXT in ${CONTEXTS[*]}; do
         if [ ! "$CLIENT_CERT" == "null" ]
         then
                 echo "Certificate"
-                ISSUER=$(echo $CLIENT_CERT | base64 -d | openssl x509 -in - -text -noout | grep Issuer | sed -e 's/^[ \t]*//' | sed 's/Issuer: //g')
-                SUBJECT=$(echo $CLIENT_CERT | base64 -d | openssl x509 -in - -text -noout | grep Subject: | sed -e 's/^[ \t]*//' | sed 's/Subject: //g')
-                EXP=$(echo $CLIENT_CERT | base64 -d | openssl x509 -in - -enddate -noout | sed 's/notAfter=//g')
+                print_certificate_summary $CLIENT_CERT
 
-                echo "    -->      Issuer: $ISSUER"
-                echo "    -->     Subject: $SUBJECT"
-                echo "    -->     Expires: $EXP"
 
 	elif [ ! "$CLIENT_EXEC_COMMAND" == "null" ];
 	then
