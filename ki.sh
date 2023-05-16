@@ -105,8 +105,8 @@ for CONTEXT in ${CONTEXTS[*]}; do
 	then
 		echo "Command ($CLIENT_EXEC_COMMAND)"
 		echo    "    -->     Command: $CLIENT_EXEC_COMMAND" $CLIENT_EXEC_ARGS
-		echo    "    -->      output: /tmp/kubecmdtoken-$I" 
-		echo -n "    -->    can read: "
+		echo    "    -->      Output: /tmp/kubecmdtoken-$I"
+		echo -n "    --> Can execute: "
 
 		timeout 2 $CLIENT_EXEC_COMMAND $CLIENT_EXEC_ARGS &>  /tmp/kubecmdtoken-$I
 		TOKEN_REQUEST_RC=$?
@@ -119,17 +119,27 @@ for CONTEXT in ${CONTEXTS[*]}; do
 		then
 			echo "No (Error code: $TOKEN_REQUEST_RC)"
 		else
-			echo "Yes. JWT"
+			echo "Yes"
 			TOKEN=$(cat /tmp/kubecmdtoken-$I | jq -r .status.token)
-			CLAIMS=$(jwt_decode $TOKEN | jq -r keys)
-			jwt_decode $TOKEN > /tmp/kubecmd-jwt-$I
-			echo "    -->      claims:" $CLAIMS
-			echo "    --> decoded jwt: /tmp/kubecmd-jwt-$I"
 		fi
 
+		echo -n "    -->      Is JWT: "
 
+		# Check if we can decode JWT
+		jwt_decode $TOKEN &> /tmp/kubecmd-jwt-$I
+		JWT_DECODE_RC=$?
+
+		if [ "$JWT_DECODE_RC" == "0" ]
+		then
+			echo "Yes"
+			CLAIMS=$(jwt_decode $TOKEN | jq -r keys)
+			echo "    -->      claims:" $CLAIMS
+			echo "    --> decoded jwt: /tmp/kubecmd-jwt-$I"
+		else
+			echo "No"
+		fi
 	else
-		echo "Uknown"
+		echo "Unknown"
 	fi
 
 
